@@ -1,0 +1,143 @@
+// Copyright [2015] <none>
+#include "./sort.h"
+
+#include <cstdlib>
+
+#include <algorithm>
+#include <array>
+#include <iostream>
+#include <iterator>
+#include <ostream>
+#include <vector>
+
+template <class InputIt>
+void Print(std::ostream& out, InputIt first, InputIt last) {  // NOLINT
+  for (; first != last; ++first) {
+    out << *first << (first != last - 1 ? ", " : "\n");
+  }
+}
+
+void AssertSort() {
+  std::array<int, 7> sorted = {1, 2, 4, 7, 8, 9, 9};
+  auto data = sorted;
+  do {
+    auto tmp = data;
+    InsertionSort(tmp.begin(), tmp.end());
+    if (!std::equal(tmp.begin(), tmp.end(), sorted.begin())) {
+      std::cerr << "Fail: ";
+      Print(std::cerr, tmp.begin(), tmp.end());
+      std::exit(1);
+    }
+  } while (std::next_permutation(data.begin(), data.end()));
+}
+
+/**
+ * Naive sorted merge implementation of two sorted containers
+ * Space complexity: Θ(n)
+ * Time complexity: Θ(n)
+ */
+template <class FwdIt>
+constexpr void Merge(FwdIt first, FwdIt middle, FwdIt last) {
+  using value_type = typename std::iterator_traits<FwdIt>::value_type;
+  // Copy first half so we can overwrite it
+  std::vector<value_type> tmp;
+  std::copy(first, middle, std::back_inserter(tmp));
+  auto left = tmp.begin();
+  auto right = middle;
+  for (; left != tmp.end() && right != last; ++first) {
+    if (*left <= *right) {
+      // There's a high possibility of needless copies here but currently
+      // I don't care because I don't know if I should care
+      *first = *left;
+      ++left;
+    } else {
+      *first = *right;
+      ++right;
+    }
+  }
+  /*
+   * Copy over the rest of there are elements left over in the temporary/left
+   * range.
+   * Note that this is not needed for the right side because those would just
+   * be in-place swaps.
+   */
+  for (; left != tmp.end(); ++left, ++first) {
+    *first = *left;
+  }
+}
+
+/**
+ * Naive recursive merge sort implementation
+ * Space complexity: Θ(n)
+ * Time complexity: Θ(n * log n)
+ * Note: From the point of time complexity this may look pretty nice but
+ * actually it's not at all. I'd definitely always prefer a sorting algorithm
+ * which has Ω(n),as well as O(n * log n) over this.
+ */
+template <class FwdIt>
+constexpr void MergeSort(FwdIt first, FwdIt last) {
+  // Base case: [0-1] elements
+  if (first != last && first != last - 1) {
+    auto middle = first + (std::distance(first, last) / 2);
+    MergeSort(first, middle);
+    MergeSort(middle, last);
+    // Due to the recursive nature the smallest range will be merged first
+    Merge(first, middle, last);
+  }
+}
+
+/**
+ * Naive bubble sort implementation
+ * Space complexity: Θ(1)
+ * Time complexity: Ω(n), O(n^2)
+ * Note: In reality this sorting algorithm is still bad but actually this
+ * doesn't perform too bad and might be even the sorting algorithm of your
+ * choice if the data is nearly sorted.
+ */
+template <class FwdIt>
+constexpr void BubbleSort(FwdIt first, FwdIt last) {
+  // Base case: [0-1] elements
+  if (first == last || first == --last) return;
+  do {
+    FwdIt until = first;
+    for (FwdIt current = first; current != last; ++current) {
+      // Make sure the larger element is right
+      if (*current > *(current + 1)) {
+        std::iter_swap(current, current + 1);
+        /*
+         * Since we move the largest element we can find to the back we can
+         * assume that the elements after this element are all sorted if this
+         * isn't going to be moved again.
+         */
+        until = current;
+      }
+    }
+    // Update last possible element that may not be sorted
+    last = until;
+  } while (first != last);
+}
+/*
+ * Naive insertion sort implementation
+ * Space complexity: Θ(1)
+ * Time complexity: Ω(n), O(n^2)
+ */
+template <class FwdIt>
+constexpr void InsertionSort(FwdIt first, FwdIt last) {
+  // Base case: no elements
+  if (first == last) return;
+  for (FwdIt current = first + 1; current != last; ++current) {
+    auto value = *current;
+    FwdIt insert = current;
+    for (; insert != first && *(insert - 1) > value; --insert) {
+      // Copy the value to the right to make space for the value we'd like to
+      // insert.
+      *insert = *(insert - 1);
+    }
+    *insert = value;
+  }
+}
+
+// Using a C-style container. In C++17 we'd have array_view for this.
+void sortiere(int* container, std::size_t size) {  // NOLINT
+  InsertionSort(&container[0], &container[size]);  // Pointing out of range
+}
